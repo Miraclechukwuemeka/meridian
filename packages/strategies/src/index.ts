@@ -20,3 +20,4 @@ export * from "./sizing";
 export * from "./portfolio";
 export * from "./strategy";
 export * from "./clock";
+export * from "./funding";

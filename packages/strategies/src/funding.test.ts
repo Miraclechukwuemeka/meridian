@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
   FixedPointDecimal,
+  FundingPosition,
   FundingRate,
-  Position,
   accrueFunding,
   computeBasis,
 } from "./index";
 
 // ---------------------------------------------------------------------------
-// Helpers — keep tests readable without magic literals
+// Helpers that keep tests readable without magic literals
 // ---------------------------------------------------------------------------
 
-/** Shorthand: build a Position with a decimal-string notional. */
-function pos(notional: string): Position {
+/** Shorthand: build a FundingPosition with a decimal-string notional. */
+function pos(notional: string): FundingPosition {
   return { notional: FixedPointDecimal.fromString(notional) };
 }
 
@@ -27,10 +27,10 @@ function fp(value: string): FixedPointDecimal {
 }
 
 // ---------------------------------------------------------------------------
-// accrueFunding — sign conventions
+// accrueFunding sign conventions
 // ---------------------------------------------------------------------------
 
-describe("accrueFunding — sign conventions (short-leg perspective)", () => {
+describe("accrueFunding sign conventions (short-leg perspective)", () => {
   it("positive rate: short receives funding (result > 0)", () => {
     // notional=100, rate=0.0000001/s (1 stroop per unit), elapsed=1s
     // payment = 100 * 0.0000001 * 1 = 0.00001
@@ -64,10 +64,10 @@ describe("accrueFunding — sign conventions (short-leg perspective)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// accrueFunding — arithmetic correctness / no-float guarantee
+// accrueFunding arithmetic correctness and no-float guarantee
 // ---------------------------------------------------------------------------
 
-describe("accrueFunding — arithmetic precision and no-float requirement", () => {
+describe("accrueFunding arithmetic precision and no-float requirement", () => {
   it("result is a FixedPointDecimal (toStroops returns bigint)", () => {
     const result = accrueFunding(pos("100"), rate("0.0000001"), 1n);
     expect(result).toBeInstanceOf(FixedPointDecimal);
@@ -107,14 +107,10 @@ describe("accrueFunding — arithmetic precision and no-float requirement", () =
   it("very small notional × small rate × small elapsed truncates correctly", () => {
     // notional=1 stroop (0.0000001), rate=1 stroop/unit, elapsed=1s
     // raw = 1 * 1 * 1 / 10_000_000 = 0  (truncated, below 1 stroop)
-    const tinyPos: Position = {
+    const tinyPos: FundingPosition = {
       notional: FixedPointDecimal.fromStroops(1n),
     };
-    const result = accrueFunding(
-      tinyPos,
-      rate("0.0000001"),
-      1n
-    );
+    const result = accrueFunding(tinyPos, rate("0.0000001"), 1n);
     // 1 stroop_notional * 1 stroop_rate * 1s / 10_000_000 = 0 (integer truncation)
     expect(result.toStroops()).toBe(0n);
   });
@@ -139,10 +135,10 @@ describe("accrueFunding — arithmetic precision and no-float requirement", () =
 });
 
 // ---------------------------------------------------------------------------
-// computeBasis — correctness
+// computeBasis correctness
 // ---------------------------------------------------------------------------
 
-describe("computeBasis — spot minus derivative", () => {
+describe("computeBasis spot minus derivative", () => {
   it("backwardation: spot > derivative → positive basis", () => {
     // spot = 100.05, derivative = 100.00 → basis = 0.05
     const result = computeBasis(fp("100.05"), fp("100"));
@@ -197,7 +193,7 @@ describe("computeBasis — spot minus derivative", () => {
 // Acceptance criteria integration checks
 // ---------------------------------------------------------------------------
 
-describe("acceptance criteria — integration", () => {
+describe("acceptance criteria integration", () => {
   it("funding accrual sign conventions are documented and correct", () => {
     // Positive rate → short receives (value > 0)
     const received = accrueFunding(pos("100"), rate("0.0000010"), 3600n);
@@ -220,12 +216,12 @@ describe("acceptance criteria — integration", () => {
     expect(basis.toString()).toBe("0.005");
   });
 
-  it("consumes existing FundingRate type — no duplicate rate interface", () => {
+  it("consumes the FundingRate type with no duplicate rate interface", () => {
     // Verify FundingRate is the same type used by accrueFunding (compiles & runs)
     const fundingRate: FundingRate = {
       ratePerSecond: FixedPointDecimal.fromString("0.0000001"),
     };
-    const position: Position = {
+    const position: FundingPosition = {
       notional: FixedPointDecimal.fromString("500"),
     };
     const result = accrueFunding(position, fundingRate, 60n);
@@ -233,7 +229,11 @@ describe("acceptance criteria — integration", () => {
   });
 
   it("no floats: all intermediate and final values are bigint stroops", () => {
-    const fundingResult = accrueFunding(pos("99999.9999999"), rate("0.0000001"), 86399n);
+    const fundingResult = accrueFunding(
+      pos("99999.9999999"),
+      rate("0.0000001"),
+      86399n
+    );
     const basisResult = computeBasis(fp("1.9999999"), fp("1.0000001"));
 
     // Confirming the internal representation is bigint

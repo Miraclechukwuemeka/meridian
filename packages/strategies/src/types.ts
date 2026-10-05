@@ -127,12 +127,13 @@ export interface FundingRate {
 }
 
 /**
- * A single short position in the simulation.
+ * The short leg a funding accrual is computed against. Named to avoid
+ * colliding with the portfolio's own `Position`.
  *
  * `notional` is the absolute size of the position in the base asset,
  * expressed as a FixedPointDecimal (always ≥ 0).  The sign of any accrued
  * funding is determined by the FundingRate, not by this field.
  */
-export interface Position {
+export interface FundingPosition {
   readonly notional: FixedPointDecimal;
 }

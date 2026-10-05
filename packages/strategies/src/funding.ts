@@ -1,5 +1,5 @@
 import { FixedPointDecimal, STROOPS_PER_UNIT } from "./types";
-import type { FundingRate, Position } from "./types";
+import type { FundingPosition, FundingRate } from "./types";
 
 /**
  * Computes the funding payment accrued on a short position over an elapsed
@@ -12,8 +12,8 @@ import type { FundingRate, Position } from "./types";
  * All arithmetic is performed in stroops (integer bigint) to guarantee no
  * floating-point rounding.  The intermediate product is divided by
  * STROOPS_PER_UNIT once (not twice) because `notional` is already in stroops
- * and `ratePerSecond` encodes "per unit of notional" — one STROOPS_PER_UNIT
- * cancels between the two:
+ * and `ratePerSecond` encodes a value per unit of notional, so one
+ * STROOPS_PER_UNIT cancels between the two:
  *
  *   stroops_notional × (stroops_rate / STROOPS_PER_UNIT) × seconds
  *   = (stroops_notional × stroops_rate × seconds) / STROOPS_PER_UNIT
@@ -31,7 +31,7 @@ import type { FundingRate, Position } from "./types";
  *          side's perspective (positive = received, negative = paid).
  */
 export function accrueFunding(
-  position: Position,
+  position: FundingPosition,
   fundingRate: FundingRate,
   elapsedSeconds: bigint
 ): FixedPointDecimal {
@@ -45,7 +45,8 @@ export function accrueFunding(
   const rateStroops = fundingRate.ratePerSecond.toStroops();
 
   // Integer-only path: no floats anywhere.
-  const raw = (notionalStroops * rateStroops * elapsedSeconds) / STROOPS_PER_UNIT;
+  const raw =
+    (notionalStroops * rateStroops * elapsedSeconds) / STROOPS_PER_UNIT;
 
   return FixedPointDecimal.fromStroops(raw);
 }
